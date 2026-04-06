@@ -1,0 +1,24 @@
+# Fixed Dockerfile — follows Docker best practices for Node.js builds.
+# No duplicate COPY, and package files are copied first for layer caching.
+
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy only package files first (better layer caching)
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code (node_modules is NOT overwritten because .dockerignore excludes it,
+# and even without .dockerignore, there's no second COPY to corrupt things)
+COPY . .
+
+# Build succeeds because node_modules is intact
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
